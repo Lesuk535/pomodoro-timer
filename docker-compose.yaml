@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  nginx:
+    build:
+      context: docker/nginx
+    volumes:
+      - ./:/app
+    container_name: slowianka-nginx
+    restart: always
+    ports:
+      - "8087:80"
+    depends_on:
+      - php-fpm
+
+  php-fpm:
+    build:
+      context: docker/php-fpm
+    volumes:
+      - ./:/app
+    container_name: slowianka-php-fpm
+    depends_on:
+      - mysqldb
+
+  php-cli:
+    build:
+      context: docker/php-cli
+    volumes:
+      - ./:/app
+    command: sleep 10000
+    container_name: slowianka-php-cli
+
+  node:
+    image: node:15.3.0-alpine3.10
+    volumes:
+      - ./:/var/www
+    working_dir: /var/www
+    tty: true
+
+  mysqldb:
+    build:
+      context: docker/mysql
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./dump:/dump
+    container_name: slowianka-mysqldb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_USER: admin
+      MYSQL_DATABASE: slowianka
+    ports:
+      - "3307:3306"
+
+  elasticsearch:
+      image: docker.elastic.co/elasticsearch/elasticsearch:7.10.1
+      container_name: slowianka-elasticsearch
+      environment:
+          - "discovery.type=single-node"
+          - "bootstrap.memory_lock=true"
+          - "ES_JAVA_OPTS=-Xms1G -Xmx1G"
+          - "xpack.security.enabled=false"
+          - "http.cors.enabled=true"
+          - "http.cors.allow-origin=*"
+      ulimits:
+          memlock:
+              soft: -1
+              hard: -1
+      volumes:
+          - ./elasticsearch-data:/usr/share/elasticsearch/data
+      ports:
+          - "9200:9200"
+
+volumes:
+  mysqldb:
